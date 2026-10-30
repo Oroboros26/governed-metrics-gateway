@@ -36,6 +36,59 @@ flowchart LR
 2. A change goes through proposal, analyst review, a (simulated) 7-day test, approval and live. An approval that would break lineage is refused, and a metric with downstream dependants cannot be deleted.
 3. Agents call tools such as `get_metric_<name>` and receive the definition and the SQL. The gateway sends definitions and SQL only. **The agent runs the SQL itself, under its own read-only role.**
 
+## Who does what
+
+Four kinds of users work together. The names are demo characters, and their pain points are illustrative, not from interviews (see [docs/02-personas.md](docs/02-personas.md)).
+
+| Who | Role | What they do in Semantix | What they never have to do |
+|---|---|---|---|
+| **Jean** | Business user | Reads a metric, spots a wrong or missing definition, and **suggests a change in plain words**. Follows the request in "My Changes". | write SQL, or file an engineering ticket |
+| **Noa** | Data analyst | Owns the meaning of the data. Reviews the queue, edits descriptions and context, runs the **7-day test**, and batches tested changes into **one merge request**. Context-only changes skip engineering. | answer many small requests one by one |
+| **Ravi** | Data engineer | Controls what goes live. Reads the diff and the checks on the merge request, **approves or refuses**, rolls back if needed, and manages which agents can reach which views. | be the bottleneck for every wording change |
+| **The AI agent** | Non-human consumer | Connects with one address and one key, calls tools such as `get_metric_<name>`, and receives **the definition and the SQL, nothing else**. It runs the SQL itself under its own read-only role. | guess joins or metric logic, or see restricted fields |
+
+### One change, end to end
+
+Scenario: the "net revenue" filter should exclude returned orders.
+
+```mermaid
+sequenceDiagram
+    actor J as Jean (business user)
+    actor N as Noa (analyst)
+    actor R as Ravi (data engineer)
+    participant G as Semantix
+    actor A as AI agent
+    J->>G: 1. Suggest a change in plain words
+    G-->>J: status: requested (My Changes)
+    N->>G: 2. Open the review queue, run the 7-day test
+    N->>G: 3. Group tested changes into one merge request
+    R->>G: 4. Read the diff and checks, approve and merge
+    G-->>G: definition is live, versioned, who and when recorded
+    A->>G: 5. Ask for the metric over REST or MCP
+    G-->>A: new definition + compiled SQL (no data)
+```
+
+**Two tiers of change:** analyst-only changes (context and descriptions) go live once Noa approves. Engineering changes (metrics, filters, rules, verified queries, new views) need Ravi's approval on a merge request. Every step records who did it and when.
+
+### What the backend implements today
+
+The documents and the React prototype describe the full flow above. The **backend is a simpler first version** with three demo logins, so the roles map like this:
+
+| Backend demo login | Role in code | Workspace scope | Can review |
+|---|---|---|---|
+| Jean, E-com Lead | `ecommerce_analyst` | `ecommerce` metrics | no |
+| Amélie, Finance Director | `finance_director` | `ecommerce` and `finance` metrics | no |
+| Marc, Data Platform Reviewer | `data_reviewer` | `ecommerce` and `finance` metrics | **yes** |
+
+What the backend enforces:
+
+- **Scope:** a user only sees, and can only change, metrics in their own domains (`403` otherwise).
+- **Proposals:** anyone in scope can submit a create, update or delete. The draft is validated and compiled first. A metric can have only one change pending review at a time (`409`).
+- **Review:** only the reviewer can approve or reject (`403` otherwise). An approval that would break the dependency graph is refused, and a metric with downstream dependants cannot be deleted. Each proposal records `submitted_by`, `reviewed_by` and the review note, with timestamps for each stage (draft, compilation passed, pending review, live or rejected).
+- **Agents:** the MCP-style endpoints return a metric's definition and compiled SQL. They never execute it.
+
+The **analyst tier** (Noa), the **7-day test as a batch step**, the **merge request** and the **agent connection management** are shown in the React prototype with mock data and are not in the backend yet. The names also differ between the documents (Jean, Noa, Ravi) and the backend demo logins (Jean, Amélie, Marc).
+
 ## What is in the repository
 
 | Path | What it is |

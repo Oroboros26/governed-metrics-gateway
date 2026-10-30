@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<title>Semantix Workspace</title>
+<style>
+  /* Voro-inspired tokens: near-black base, neutral greys, violet accent (derived from usevoro.com's CSS; unverified visually) */
+  :root { --bg:#f9fafb; --card:#fff; --fg:#0a0a0a; --mute:#737373; --line:#e5e7eb; --brand:#0a0a0a; --brand-fg:#fff; --accent:#8b5cf6; --accent-d:#7c3aed;
+          --ok:#10b981; --bad:#ef4444; --warn:#a16207; --warn-bg:#fefce8; --bad-bg:#fef2f2; --ok-bg:#ecfdf5; --code:#f4f4f5; --shadow:none; }
+  [data-theme=dark] { --bg:#0a0a0a; --card:#111111; --fg:#fafafa; --mute:#a3a3a3; --line:#262626; --brand:#fafafa; --brand-fg:#0a0a0a; --accent:#8b5cf6; --accent-d:#a78bfa;
+          --warn:#eab308; --warn-bg:#1c1708; --bad-bg:#2a1111; --ok-bg:#0b2118; --code:#171717; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 Geist,Inter,-apple-system,BlinkMacSystemFont,system-ui,sans-serif; -webkit-font-smoothing:antialiased; background:var(--bg); color:var(--fg); }
+  header { display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px; padding:10px 20px; background:var(--card); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
+  .brand { font-weight:600; display:flex; align-items:center; gap:8px; margin-right:auto; } .brand i { width:10px; height:10px; border-radius:3px; background:var(--accent); display:inline-block; transform:rotate(45deg); }
+  .brand span { color:var(--mute); font-weight:400; }
+  .pill { display:inline-flex; align-items:center; gap:8px; padding:5px 12px; border:1px solid var(--line); border-radius:99px; font-size:13px; white-space:nowrap; }
+  .pill b { font-weight:600; } .pill small { color:var(--mute); }
+  .dot { width:9px; height:9px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 0 var(--ok); animation:ping 1.8s infinite; }
+  .off .dot { background:var(--bad); animation:blink .7s infinite; } .off.pill { border-color:var(--bad); color:var(--bad); font-weight:700; }
+  @keyframes ping { 70% { box-shadow:0 0 0 7px transparent; } 100% { box-shadow:0 0 0 0 transparent; } } @keyframes blink { 50% { opacity:.2; } }
+  select, input[type=text], textarea { font:inherit; color:inherit; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); width:100%; }
+  textarea.code { font-family:ui-monospace,Menlo,monospace; font-size:14px; }
+  button { font:inherit; color:inherit; cursor:pointer; }
+  .layout { display:grid; grid-template-columns:280px 1fr; gap:24px; padding:24px; max-width:1320px; margin:0 auto; }
+  aside h2, .card h2 { margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); }
+  .cat { display:flex; justify-content:space-between; width:100%; background:none; border:0; padding:8px 6px 4px; font-weight:700; text-transform:capitalize; }
+  .cat[aria-current=true] { color:var(--brand); }
+  .node { display:block; text-align:left; padding:8px 12px; margin:2px 0 2px 10px; width:calc(100% - 10px); background:var(--card); border:1px solid var(--line); border-radius:8px; color:inherit; font:inherit; cursor:pointer; }
+  .node:hover, .node[aria-current=true] { border-color:var(--brand); } .node[aria-current=true] { background:var(--code); }
+  .tabs { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+  .tab { padding:7px 14px; border:1px solid var(--line); border-radius:6px; background:var(--card); font-weight:600; }
+  .tab[aria-selected=true] { background:var(--brand); color:var(--brand-fg); border-color:var(--brand); } .tab.new { margin-left:auto; border-color:var(--brand); color:var(--brand); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:18px; box-shadow:var(--shadow); }
+  .card h1 { margin:0; font-size:22px; text-transform:capitalize; } .titlerow { display:flex; justify-content:space-between; align-items:start; gap:12px; flex-wrap:wrap; }
+  .desc { color:var(--mute); margin:4px 0 12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-bottom:14px; }
+  .field { margin-bottom:14px; } .field label, .field .lbl { display:block; font-size:12px; font-weight:600; color:var(--mute); margin-bottom:4px; }
+  .checks { display:flex; flex-wrap:wrap; gap:6px 16px; } .checks label { display:flex; gap:6px; align-items:center; font-size:14px; color:var(--fg); font-weight:400; margin:0; }
+  pre { background:var(--code); padding:10px 12px; border-radius:8px; overflow:auto; white-space:pre-wrap; font-size:13px; margin:6px 0 0; }
+  code { background:var(--code); padding:1px 6px; border-radius:5px; }
+  .badge { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.06em; padding:2px 8px; border-radius:99px; text-transform:uppercase; }
+  .live { background:var(--ok-bg); color:var(--ok); } .draft { background:var(--warn-bg); color:var(--warn); } .pending { background:var(--brand); color:var(--brand-fg); } .rejected, .delete { background:var(--bad-bg); color:var(--bad); }
+  .banner { margin:12px 0; padding:10px 14px; border-radius:10px; font-weight:500; } .banner:empty { display:none; }
+  .banner.err { background:var(--bad-bg); color:var(--bad); } .banner.info { background:var(--warn-bg); color:var(--warn); } .banner.ok { background:var(--ok-bg); color:var(--ok); }
+  .btn { padding:8px 14px; border-radius:6px; border:1px solid var(--line); background:var(--card); font-weight:600; }
+  .btn.primary { background:var(--brand); color:var(--brand-fg); border-color:var(--brand); } .btn.danger { color:var(--bad); border-color:var(--bad); }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+  button:disabled, select:disabled, textarea:disabled, input:disabled { opacity:.45; cursor:not-allowed; }
+  .frozen { background:repeating-linear-gradient(135deg,transparent 0 10px,rgba(128,128,128,.07) 10px 20px); }
+  table { width:100%; border-collapse:collapse; } th, td { padding:8px 12px; text-align:right; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+  th:first-child, td:first-child { text-align:left; } th { font-size:12px; color:var(--mute); text-transform:uppercase; } tr.total td { font-weight:700; border-top:2px solid var(--fg); }
+  .up { color:var(--ok); font-weight:700; } .down { color:var(--bad); font-weight:700; } .flat { color:var(--mute); } .headline { font-size:28px; font-weight:800; margin:4px 0; }
+  .steps { display:flex; gap:0; list-style:none; padding:0; margin:8px 0 0; flex-wrap:wrap; }
+  .steps li { flex:1; min-width:140px; padding:10px 8px 0; border-top:4px solid var(--line); font-size:13px; color:var(--mute); }
+  .steps li.done { border-color:var(--ok); color:var(--fg); } .steps li.now { border-color:var(--brand); color:var(--fg); font-weight:700; } .steps li.rejected { border-color:var(--bad); color:var(--bad); font-weight:700; } .steps small { display:block; color:var(--mute); font-weight:400; }
+  .login { max-width:460px; margin:12vh auto; text-align:center; } .login button { display:block; width:100%; margin:10px 0; text-align:left; padding:14px 16px; }
+  .offline .write { pointer-events:none; opacity:.45; }
+  code, pre, textarea.code { font-family:"JetBrains Mono","Fira Code",ui-monospace,monospace; }
+  h1, h2 { letter-spacing:-.02em; }
+  header { background:color-mix(in srgb,var(--card) 80%,transparent); backdrop-filter:blur(12px); }
+  .layout { position:relative; z-index:1; }
+  [data-theme=dark] body::before { content:""; position:fixed; top:-160px; left:50%; width:720px; height:420px; margin-left:-360px; background:radial-gradient(closest-side,rgba(139,92,246,.22),transparent); filter:blur(70px); pointer-events:none; z-index:0; }
+  .node:hover, .node[aria-current=true], select:focus, input:focus, textarea:focus { border-color:var(--accent); outline:none; }
+  .hidden { display:none; } .note { font-size:12px; color:var(--mute); }
+  .layout.nav-closed { grid-template-columns:1fr; } .layout.nav-closed aside { display:none; }
+  @media (max-width:860px) { .layout { grid-template-columns:1fr; padding:16px; } header { padding:10px 16px; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const $ = id => document.getElementById(id);
+const setTheme = t => { document.documentElement.dataset.theme = t; try { localStorage.theme = t; } catch {} };
+setTheme((() => { try { return localStorage.theme; } catch {} })() || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+const el = (tag, text, cls, attrs) => { const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; Object.assign(e, attrs || {}); return e; };
+const add = (parent, ...kids) => { parent.append(...kids); return parent; };
+const label = s => s.replaceAll("_", " ");
+const S = { user: null, up: true, rev: null, wh: {}, metrics: [], props: [], sel: null, view: "explorer", cat: null, drafts: {}, tested: null, error: "", warn: "" };
+const STAGES = [["draft_canvas", "Draft Canvas"], ["compilation_passed", "Automated Compilation Passed"], ["pending_review", "Pending Data Platform Review"], ["live", "Live Production Synchronization"]];
+const NEW = "__new__";
+
+// ---------- API ----------
+async function api(path, body) {
+  if (body && !S.up) throw new Error("Disconnected from the Semantix proxy. Write actions are frozen.");
+  let r;
+  try { r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}); }
+  catch { setUp(false); throw new Error("Cannot reach the Semantix proxy."); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const d = j.detail;
+    const err = new Error(Array.isArray(d) ? d.map(x => `${x.loc.slice(1).join(".")}: ${x.msg}`).join("; ") : d && d.message ? d.message : typeof d === "string" ? d : "Request failed.");
+    err.status = r.status; err.detail = d; throw err;
+  }
+  return j;
+}
+const store = { get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const dkey = n => `semantix.${S.user.id}.${n}`;
+
+// ---------- boot / login ----------
+async function boot() {
+  try { S.user = await api("/api/session"); }
+  catch (e) { return e.status === 401 ? login() : fatal(e); }
+  try { S.wh = await api("/api/warehouse"); await reload(); } catch (e) { return fatal(e); }
+  S.view = "explorer"; draw(); setInterval(beat, 5000);
+}
+const fatal = e => $("app").replaceChildren(el("div", "Could not load the workspace: " + e.message, "card banner err"));
+
+async function login() {
+  const users = await api("/api/users");
+  const box = el("div", null, "card login");
+  box.append(el("h1", "Semantix Workspace"), el("p", "Sign in as a demo user. Their role decides which metrics they can see and change.", "desc"));
+  users.forEach(u => { const b = el("button", null, "btn"); b.append(el("b", u.name), el("br"), el("span", u.title, "note")); b.onclick = async () => { await api("/api/login", { user: u.id }); location.reload(); }; box.append(b); });
+  $("app").replaceChildren(box);
+}
+
+async function reload() {
+  const [m, p, st] = await Promise.all([api("/api/metrics"), api("/api/proposals"), api("/api/status")]);
+  S.metrics = m.metrics; S.props = p; S.rev = st.revision; S.eng = st;
+  S.metrics.forEach(x => { S.drafts[x.name] = store.get(dkey(x.name)) || pick(x); });
+  S.drafts[NEW] = store.get(dkey(NEW)) || blank();
+}
+const pick = m => ({ name: m.name, description: m.description || "", domain: m.domain, base_table: m.base_table, expression: m.expression, dependencies: [...m.dependencies] });
+const blank = () => ({ name: "", description: "", domain: S.user.domains[0], base_table: Object.keys(S.wh)[0], expression: "", dependencies: [] });
+const cur = () => S.metrics.find(m => m.name === S.sel);
+const draft = () => S.drafts[S.sel];
+const latest = name => [...S.props].reverse().find(p => p.metric.name === name);
+const isPending = name => (latest(name) || {}).proposal?.status === "pending_review";
+const dirty = () => S.sel === NEW ? JSON.stringify(draft()) !== JSON.stringify(blank()) : JSON.stringify(draft()) !== JSON.stringify(pick(cur()));
+const stateOf = n => isPending(n) ? ["pending", "Pending review"] : JSON.stringify(S.drafts[n]) !== JSON.stringify(pick(S.metrics.find(m => m.name === n))) ? ["draft", "Unsaved draft"] : ["live", "Live"];
+const body = (action = S.sel === NEW ? "create" : "update") => ({ action, metric: draft() });
+
+// ---------- Module 1: telemetry header + heartbeat ----------
+async function beat() {
+  try {
+    const st = await api("/api/status"); setUp(true);
+    if (st.revision !== S.rev) { await reload(); draw(true); }
+  } catch { setUp(false); }
+}
+function setUp(up) { if (S.up !== up) { S.up = up; document.body.classList.toggle("offline", !up); drawHeader(); } }
+
+function drawHeader() {
+  const u = S.user, h = el("header");
+  const hb = el("span", null, "pill" + (S.up ? "" : " off"));
+  hb.setAttribute("role", "status");
+  hb.append(el("span", null, "dot"), S.up ? add(el("span"), el("b", "Proxy: CONNECTED"), el("small", ` | Warehouse: ${S.eng.warehouse} (${S.eng.engine})`)) : el("b", "DISCONNECTED: writes frozen"));
+  const out = el("button", "Sign out", "btn"); out.onclick = async () => { await api("/api/logout", {}).catch(() => {}); location.reload(); };
+  out.className = "btn"; out.style.padding = "4px 12px";
+  const navBtn = el("button", "Metrics", "btn", { type: "button", title: "Show / hide the metric panel" }); navBtn.onclick = () => { S.nav = S.nav === false; draw(true); };
+  const themeBtn = el("button", "◐", "btn", { type: "button", title: "Light / dark" }); themeBtn.onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+  add(h, navBtn, el("div", null, "brand", { innerHTML: "<i></i>Semantix <span>Workspace</span>" }),
+    add(el("span", null, "pill"), el("b", `User: ${u.name} (${u.title})`)),
+    add(el("span", null, "pill"), el("small", "Warehouse role: "), el("b", u.sf_role)), hb, themeBtn, out);
+  const old = document.querySelector("header"); old ? old.replaceWith(h) : $("app").prepend(h);
+}
+
+// ---------- layout: tree (Module 2 nav) + tabs ----------
+function draw(keepError) {
+  if (!keepError) S.error = "";
+  const app = $("app"), main = el("main");
+  const layout = el("div", null, "layout" + (S.nav === false ? " nav-closed" : "")), aside = el("aside"), tree = el("nav");
+  tree.setAttribute("aria-label", "Metric catalog");
+  aside.append(el("h2", "Metric catalog"), tree); layout.append(aside, main);
+  app.replaceChildren(layout); drawHeader();
+  const cats = [...new Set(S.metrics.map(m => m.domain))].sort();
+  cats.forEach(c => {
+    const cb = el("button", null, "cat", { type: "button" }); cb.setAttribute("aria-current", S.view === "explorer" && S.cat === c);
+    cb.append(el("span", c), el("span", S.metrics.filter(m => m.domain === c).length, "note")); cb.onclick = () => { S.cat = S.cat === c ? null : c; S.view = "explorer"; draw(); };
+    tree.append(cb);
+    S.metrics.filter(m => m.domain === c).forEach(m => {
+      const b = el("button", null, "node", { type: "button" }); b.setAttribute("aria-current", S.view === "editor" && S.sel === m.name);
+      const [cls, txt] = stateOf(m.name); add(b, el("div", label(m.name)), el("span", txt, `badge ${cls}`)); b.onclick = () => open(m.name); tree.append(b);
+    });
+  });
+  const tabs = el("div", null, "tabs"); tabs.setAttribute("role", "tablist");
+  const mk = (id, text, cls) => { const t = el("button", text, "tab " + (cls || ""), { type: "button" }); t.setAttribute("role", "tab"); t.setAttribute("aria-selected", S.view === id); t.onclick = () => { S.view = id; draw(); }; return t; };
+  tabs.append(mk("explorer", "Schema Explorer"));
+  if (S.sel) tabs.append(mk("editor", "Editor"));
+  if (S.user.can_review) tabs.append(mk("review", `Review queue (${S.props.filter(p => p.proposal.status === "pending_review").length})`));
+  const nw = el("button", "+ Add metric", "tab new write", { type: "button" }); nw.onclick = () => open(NEW); tabs.append(nw);
+  main.append(tabs, ...({ explorer, editor, review }[S.view])());
+}
+function open(name) { S.sel = name; S.view = "editor"; S.tested = null; S.warn = ""; draw(); validate(); }
+
+// ---------- Module 2: schema explorer ----------
+function explorer() {
+  const list = S.metrics.filter(m => !S.cat || m.domain === S.cat);
+  if (!list.length) return [el("div", "No metrics in this scope.", "card")];
+  return list.map(m => {
+    const c = el("div", null, "card"), [cls, txt] = stateOf(m.name);
+    const t = el("div", null, "titlerow"); add(t, el("h1", label(m.name)), add(el("div"), el("span", m.domain, "badge draft"), " ", el("span", txt, `badge ${cls}`)));
+    const e = el("button", "Open in editor", "btn", { type: "button" }); e.onclick = () => open(m.name);
+    add(c, t, el("p", m.description || "No description.", "desc"), add(el("div", "Physical base table: "), el("code", m.base_table)),
+      add(el("div", "Depends on: ", "desc"), ...(m.dependencies.length ? m.dependencies.map(d => el("code", d)) : ["none"])),
+      el("pre", m.sql || "Formula does not compile."), add(el("div", null, "row"), e));
+    return c;
+  });
+}
+
+// ---------- Module 3: CRUD editor ----------
+function field(lbl, control, hint) { const f = el("div", null, "field"), id = "f" + Math.random().toString(36).slice(2); control.id = id; add(f, el("label", lbl, null, { htmlFor: id }), control); if (hint) f.append(el("div", hint, "note")); return f; }
+function sel(options, value, onchange, disabled) { const s = el("select"); options.forEach(([v, t]) => s.append(el("option", t, null, { value: v }))); s.value = value; s.disabled = disabled; s.onchange = () => onchange(s.value); return s; }
+
+function editor() {
+  const isNew = S.sel === NEW, d = draft(), locked = !isNew && isPending(S.sel), p = latest(S.sel);
+  const edit = (k, v) => { d[k] = v; store.set(dkey(S.sel), d); S.tested = null; clearTimeout(edit.t); edit.t = setTimeout(validate, 250); reflect(); };
+  const A = el("div", null, "card" + (locked ? " frozen" : "")); A.id = "formcard";
+  const [cls, txt] = isNew ? ["draft", "New draft"] : stateOf(S.sel);
+  add(A, add(el("div", null, "titlerow"), el("h1", isNew ? "New metric" : label(S.sel)), el("span", txt, `badge ${cls}`)));
+
+  const name = el("input", null, null, { type: "text", value: d.name, placeholder: "snake_case_name", disabled: !isNew || !S.up }); name.oninput = () => edit("name", name.value.trim());
+  const desc = el("input", null, null, { type: "text", value: d.description, disabled: locked || !S.up, placeholder: "What does this number mean to the business?" }); desc.oninput = () => edit("description", desc.value);
+  const expr = el("textarea", null, "code", { rows: 3, value: d.expression, disabled: locked || !S.up, placeholder: "SUM(returned_items_count) / SUM(total_items_ordered)" }); expr.oninput = () => edit("expression", expr.value);
+  const g = el("div", null, "grid");
+  add(g, field("Metric name", name, isNew ? "Lowercase letters, numbers and underscores." : "Names are fixed. To rename, delete and add again."),
+    field("Business category", sel(S.user.domains.map(x => [x, x]), d.domain, v => edit("domain", v), locked || !S.up)),
+    field("Source table", sel(Object.keys(S.wh).map(t => [t, t]), d.base_table, v => { edit("base_table", v); draw(true); validate(); }, locked || !S.up)));
+  const deps = el("div", null, "checks"), dis = locked || !S.up;
+  S.metrics.filter(m => m.name !== S.sel).forEach(m => { const cb = el("input", null, null, { type: "checkbox", checked: d.dependencies.includes(m.name), disabled: dis }); cb.onchange = () => edit("dependencies", cb.checked ? [...d.dependencies, m.name] : d.dependencies.filter(x => x !== m.name)); deps.append(el("label", null, null)); deps.lastChild.append(cb, " " + label(m.name)); });
+  const depField = el("div", null, "field"); add(depField, el("div", "Builds on other metrics (optional)", "lbl"), deps);
+  add(A, g, field("Description", desc), field("Calculation (Excel-like formula)", expr, `Columns in ${d.base_table}: ${S.wh[d.base_table].join(", ")}`), depField,
+    el("div", S.error, "banner err", { id: "err", role: "alert" }), el("div", S.warn, "banner err", { id: "warn", role: "alert" }));
+  if (locked) A.append(el("div", "Frozen: this change is pending Data Platform review.", "banner info"));
+
+  const run = el("button", "Run 7-Day Simulation Test", "btn primary write", { type: "button", id: "run" }); run.onclick = simulate;
+  const del = el("button", "Delete metric", "btn danger write", { type: "button", id: "del", disabled: isNew || locked || !S.up }); del.onclick = remove;
+  A.append(add(el("div", null, "row"), run, del));
+
+  const C = el("div", null, "card" + (S.tested ? "" : " hidden")); C.id = "zoneC"; if (S.tested) result(C);
+  const D = el("div", null, "card" + (S.tested || locked ? "" : " hidden")); D.id = "zoneD"; submitBlock(D, locked, isNew);
+  return [A, C, D, timeline(isNew, p)];
+}
+function reflect() { const b = $("run"); if (b) b.disabled = !!S.error || !S.up; }
+async function validate() {
+  const n = S.sel; if (!n || S.view !== "editor") return;
+  try { await api("/api/drafts/validate", body()); S.error = ""; } catch (e) { S.error = e.status === 409 ? "" : e.message; }
+  if (S.sel !== n || !$("err")) return;
+  $("err").textContent = S.error; reflect();
+}
+async function simulate() {
+  const b = $("run"); b.disabled = true; b.textContent = "Running test…";
+  try { S.tested = await api("/api/drafts/simulate", body()); S.error = ""; } catch (e) { S.tested = null; S.error = e.message; }
+  draw(true); if (S.tested) $("zoneC").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// delete guard: lineage first, server re-checks on submit
+async function remove() {
+  S.warn = "";
+  try {
+    const { downstream } = await api(`/api/v1/metrics/impact/${S.sel}`);
+    if (downstream.length) { S.warn = `Delete blocked: ${downstream.map(label).join(", ")} depend on '${label(S.sel)}'. Update those metrics first.`; return draw(true); }
+  } catch (e) { S.warn = e.message; return draw(true); }
+  S.tested = { deleteOnly: true }; S.error = ""; draw(true); $("zoneD").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+const fmt = v => v == null ? "—" : Math.abs(v) < 10 ? v.toLocaleString(undefined, { maximumFractionDigits: 4 }) : v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+const vcls = v => v == null || v === 0 ? "flat" : v > 0 ? "up" : "down";
+const vtxt = v => v == null ? "n/a" : (v > 0 ? "+" : "") + v.toFixed(1) + "%";
+function result(C) {
+  if (S.tested.deleteOnly) return;
+  const t = S.tested.total, isNew = S.sel === NEW;
+  add(C, el("h2", "7-day simulation · demo dataset, no live warehouse touched"),
+    el("div", isNew ? "New metric: nothing in production to compare" : `${vtxt(t.variance_pct)} Variance Shift`, `headline ${vcls(t.variance_pct)}`));
+  const tb = el("table"), head = el("tr"); ["Day", "Production", "Your draft", "Variance"].forEach(h => head.append(el("th", h)));
+  const bd = el("tbody"); [...S.tested.days, t].forEach((r, i, a) => { const tr = el("tr", null, i === a.length - 1 ? "total" : ""); add(tr, el("td", r.label), el("td", fmt(r.production)), el("td", fmt(r.draft)), el("td", vtxt(r.variance_pct), vcls(r.variance_pct))); bd.append(tr); });
+  add(tb, add(el("thead"), head), bd); C.append(tb);
+}
+
+function submitBlock(D, locked, isNew) {
+  const del = S.tested && S.tested.deleteOnly, p = latest(S.sel);
+  const note = el("textarea", null, null, { rows: 3, maxLength: 2000, disabled: locked || !S.up, value: locked && p ? p.proposal.justification : "", placeholder: del ? "Why is this metric obsolete?" : "Why is this change needed? What decision does it support?" });
+  const msg = el("div", "", "banner", { role: "status" });
+  const btn = el("button", locked ? "Submitted: pending review" : del ? "Submit deletion for Data Team Review" : "Submit for Data Team Review", "btn primary write", { type: "button", disabled: locked || !S.up });
+  btn.onclick = async () => {
+    if (!note.value.trim()) { msg.className = "banner err"; msg.textContent = "Add a business justification first."; return; }
+    btn.disabled = true;
+    try { await api("/api/proposals", { ...body(del ? "delete" : undefined), justification: note.value }); store.set(dkey(S.sel), null); await reload(); S.tested = null; if (S.sel === NEW) S.sel = null, S.view = "explorer"; draw(); }
+    catch (e) { msg.className = "banner err"; msg.textContent = e.message; btn.disabled = false; }
+  };
+  add(D, el("h2", del ? "Confirm deletion" : "Submit for review"), field("Business justification note", note), msg, btn,
+    el("p", locked ? "Waiting for the Data Platform team." : "Nothing changes in production until the Data Platform team approves it.", "note"));
+}
+
+// ---------- Module 4: lifecycle tracker ----------
+function timeline(isNew, p) {
+  const C = el("div", null, "card"); C.append(el("h2", "Workspace lifecycle"));
+  const stages = p ? p.proposal.stages : [];
+  const at = s => (stages.find(x => x.stage === s) || {}).at;
+  const rejected = p && p.proposal.status === "rejected", pend = p && p.proposal.status === "pending_review", live = p && p.proposal.status === "live";
+  const stepList = el("ol", null, "steps");
+  STAGES.forEach(([id, text], i) => {
+    const done = p ? !!at(id) : (id === "draft_canvas" && (isNew || dirty())) || (id === "live" && !isNew && !dirty());
+    const now = p ? (id === "pending_review" && pend) || (id === "live" && live) : id === "draft_canvas" && (isNew || dirty());
+    const rej = rejected && id === "live";
+    const li = el("li", null, rej ? "rejected" : now ? "now" : done ? "done" : ""); li.append(rej ? "Rejected by Data Platform" : text);
+    const t = rej ? at("rejected") : at(id); if (t) li.append(el("small", new Date(t).toLocaleString()));
+    else if (!p && id === "live" && done) li.append(el("small", "Baseline configuration"));
+    stepList.append(li);
+  });
+  C.append(stepList);
+  if (p) { const pr = p.proposal; C.append(el("p", `${pr.action.toUpperCase()} submitted by ${pr.submitted_by}: “${pr.justification}”` + (pr.review_note ? ` · Reviewer note: “${pr.review_note}”` : ""), "note")); }
+  return C;
+}
+
+// ---------- reviewer queue ----------
+function review() {
+  const q = S.props.filter(p => p.proposal.status === "pending_review");
+  if (!q.length) return [el("div", "Nothing waiting for review.", "card")];
+  return q.map(doc => {
+    const p = doc.proposal, live = S.metrics.find(m => m.name === doc.metric.name), c = el("div", null, "card");
+    add(c, add(el("div", null, "titlerow"), el("h1", label(doc.metric.name)), el("span", p.action, "badge " + (p.action === "delete" ? "delete" : "draft"))),
+      el("p", `Submitted by ${p.submitted_by} (${p.role}): “${p.justification}”`, "desc"));
+    if (p.action !== "delete") add(c, el("div", "Proposed formula", "lbl"), el("pre", `${doc.metric.base_table}: ${doc.metric.expression}`));
+    if (live) add(c, el("div", "Current production formula", "lbl"), el("pre", `${live.base_table}: ${live.expression}`));
+    const note = el("input", null, null, { type: "text", placeholder: "Reviewer note (optional)" }), msg = el("div", "", "banner err", { role: "alert" });
+    const act = d => async () => { try { await api(`/api/proposals/${p.id}/decision`, { decision: d, note: note.value }); await reload(); draw(); } catch (e) { msg.textContent = e.message; } };
+    const ok = el("button", "Approve and sync to production", "btn primary write", { type: "button" }), no = el("button", "Reject", "btn danger write", { type: "button" });
+    ok.onclick = act("approve"); no.onclick = act("reject");
+    add(c, note, msg, add(el("div", null, "row"), ok, no)); return c;
+  });
+}
+
+boot();
+</script>
+</body>
+</html>

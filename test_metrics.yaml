@@ -1,0 +1,20 @@
+version: "1.0.0"
+dialect: "snowflake"
+metrics:
+  gross_revenue:
+    name: "gross_revenue"
+    base_table: "fct_orders"
+    expression: "SUM(item_price * quantity)"
+    description: "Total revenue generated before tax and discounts calculation runs"
+  net_return_rate:
+    name: "net_return_rate"
+    base_table: "fct_orders"
+    expression: "SUM(returned_items_count) / SUM(total_items_ordered)"
+    dependencies: ["gross_revenue"]
+    description: "Share of ordered items that were returned"
+  adjusted_operating_margin:
+    name: "adjusted_operating_margin"
+    base_table: "finance_ledger"
+    expression: "SUM(operating_income - one_off_costs) / SUM(revenue)"
+    domain: "finance"
+    description: "Operating margin after removing one-off costs"
